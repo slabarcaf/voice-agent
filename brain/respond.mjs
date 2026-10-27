@@ -25,7 +25,8 @@ const MAX_CHARS = 4000;
 
 // Callers send OpenAI-shaped messages (ElevenLabs included). We keep only user/assistant
 // text, drop any caller-supplied system prompt (the brain owns the persona), merge
-// same-role runs and make sure the conversation starts with the user.
+// same-role runs and make sure the conversation starts with the user. A greeting the voice
+// platform already spoke comes back separately so the model doesn't introduce itself twice.
 export function normalize(messages) {
   const out = [];
   for (const m of messages || []) {
@@ -38,28 +39,30 @@ export function normalize(messages) {
     if (last?.role === m.role) last.content += `\n${text}`;
     else out.push({ role: m.role, content: text });
   }
+  const greeting = out[0]?.role === "assistant" ? out[0].content : null;
   while (out.length && out[0].role !== "user") out.shift();
   const trimmed = out.slice(-MAX_TURNS);
   while (trimmed.length && trimmed[0].role !== "user") trimmed.shift();
-  return trimmed;
+  return { messages: trimmed, greeting };
 }
 
 // Yields {type:"meta", route, provider, model} once, then {type:"text", text} deltas.
 export async function* respond({ agentId = "resume", messages, env = process.env }) {
   const agent = AGENTS[agentId];
   if (!agent) throw new Error(`unknown agent: ${agentId}`);
-  const convo = normalize(messages);
+  const { messages: convo, greeting } = normalize(messages);
   if (!convo.length || convo[convo.length - 1].role !== "user") throw new Error("last message must be from the user");
 
   const list = candidates(agent, convo[convo.length - 1].content, env);
   if (!list.length) throw new Error("no LLM provider configured (set GROQ_API_KEY and/or ANTHROPIC_API_KEY)");
 
   const system = systemPrompt(agentId);
+  const note = greeting ? `You already greeted the visitor out loud with: "${greeting}" Don't introduce yourself again.` : null;
   let lastError;
   for (const c of list) {
     let started = false;
     try {
-      const stream = PROVIDERS[c.provider]({ model: c.model, system, messages: convo, maxTokens: agent.maxOutputTokens, env });
+      const stream = PROVIDERS[c.provider]({ model: c.model, system, note, messages: convo, maxTokens: agent.maxOutputTokens, env });
       for await (const text of stream) {
         if (!started) {
           started = true;

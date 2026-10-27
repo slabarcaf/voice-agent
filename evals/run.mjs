@@ -2,6 +2,7 @@
 //   node --env-file=.env.local evals/run.mjs [--only id1,id2] [--delay seconds] [--verbose] [--url https://…]
 import fs from "node:fs";
 import { respond } from "../brain/respond.mjs";
+import { detectLang } from "../brain/lang.mjs";
 
 const qs = JSON.parse(fs.readFileSync(new URL("./questions.json", import.meta.url)));
 const only = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1].split(",") : null;
@@ -33,9 +34,7 @@ async function* remote(messages) {
   }
 }
 
-const ES = /\b(el|la|los|las|de|que|en|es|su|para|con|por|una|del|está|también)\b/gi;
-const EN = /\b(the|and|is|he|his|for|with|of|to|in|was|has|at|on|also)\b/gi;
-const langOf = (t) => ((t.match(ES) || []).length > (t.match(EN) || []).length ? "es" : "en");
+const langOf = (t) => detectLang(t) || "en";
 const has = (t, s) => t.toLowerCase().includes(s.toLowerCase());
 
 let passed = 0;

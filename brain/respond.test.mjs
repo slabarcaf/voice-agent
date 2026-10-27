@@ -9,5 +9,6 @@ test("normalize drops system, merges roles, starts with user", () => {
     { role: "user", content: [{ type: "text", text: "Where" }] },
     { role: "user", content: "did he study?" },
   ]);
-  assert.deepEqual(out, [{ role: "user", content: "Where\ndid he study?" }]);
+  assert.deepEqual(out.messages, [{ role: "user", content: "Where\ndid he study?" }]);
+  assert.equal(out.greeting, "Hi, I'm Santiago's AI assistant.");
 });

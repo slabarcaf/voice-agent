@@ -4,14 +4,15 @@ import Anthropic from "@anthropic-ai/sdk";
 import Groq from "groq-sdk";
 
 export const PROVIDERS = {
-  async *groq({ model, system, messages, maxTokens, env }) {
+  // `note` is per-conversation context; it goes after the cached system prompt.
+  async *groq({ model, system, note, messages, maxTokens, env }) {
     const groq = new Groq({ apiKey: env.GROQ_API_KEY });
     const stream = await groq.chat.completions.create({
       model,
       // gpt-oss reasons before answering; its reasoning tokens count against max_tokens.
       ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low", max_tokens: maxTokens * 4 } : { max_tokens: maxTokens }),
       stream: true,
-      messages: [{ role: "system", content: system }, ...messages],
+      messages: [{ role: "system", content: note ? `${system}\n\n${note}` : system }, ...messages],
     });
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content;
@@ -19,13 +20,13 @@ export const PROVIDERS = {
     }
   },
 
-  async *anthropic({ model, system, messages, maxTokens, env }) {
+  async *anthropic({ model, system, note, messages, maxTokens, env }) {
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1 });
     const stream = client.beta.messages.stream({
       model,
       max_tokens: maxTokens,
       // Persona + knowledge pack is identical on every call, so cache it.
-      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }, ...(note ? [{ type: "text", text: note }] : [])],
       messages,
       // Short spoken answers: low effort keeps time-to-first-word down.
       output_config: { effort: "low" },
