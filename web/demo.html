@@ -76,7 +76,7 @@
   const MAX_CALL_MS = 180_000; // same 3-minute cap as the ElevenLabs agent
   const FOOTERS = {
     managed: "Engine A: ElevenLabs speech + Santiago's brain (Claude). Nothing is recorded by this page.",
-    open: "Engine B: Silero VAD + Whisper (on Groq) + Santiago's brain (Claude) + Kokoro, which runs in your browser (English; Spanish uses your device's voice). Nothing is recorded by this page.",
+    open: "Engine B: Silero VAD + Whisper (on Groq) + Santiago's brain (Claude) + Kokoro, which runs in your browser on WebGPU (English on desktop; otherwise your device's voice). Nothing is recorded by this page.",
   };
   let engine = new URLSearchParams(location.search).get("engine") === "open" ? "open" : "managed";
   let call = null, startedAt = null, timer = null;
@@ -175,9 +175,13 @@
     document.head.append(el);
   });
 
-  // Kokoro lives across calls so the model only loads once per page.
+  // Kokoro lives across calls so the model only loads once per page. It needs WebGPU to keep
+  // up with speech, and its ~330 MB download is too much for phones on data: those get the
+  // device's own voice instead.
+  const kokoroUsable = !!navigator.gpu && !(navigator.userAgentData?.mobile ?? /Mobi|Android|iPhone|iPad/.test(navigator.userAgent));
   let kokoro = null;
   function getKokoro() {
+    if (!kokoroUsable) return { ready: false, failed: true, loaded: Promise.resolve(false) };
     if (kokoro) return kokoro;
     const worker = new Worker("/web/kokoro-worker.js", { type: "module" });
     const pending = new Map();
@@ -367,8 +371,9 @@
     startClock();
     say("agent", GREETING.en);
     enqueue(GREETING.en, "en", gen);
-    if (!tts.ready && !tts.failed) {
-      const note = say("note", "Loading the open-source voice (about 90 MB, once). Your device's voice fills in until then.");
+    if (!kokoroUsable) say("note", "This device can't run the open-source voice (it needs WebGPU on a computer), so you'll hear your device's own voice.");
+    else if (!tts.ready && !tts.failed) {
+      const note = say("note", "Loading the open-source voice (about 330 MB, once). Your device's voice fills in until then.");
       const tick = setInterval(() => {
         if (tts.ready || tts.failed || !call) {
           clearInterval(tick);
