@@ -34,3 +34,8 @@ Plan of record: `~/.claude/plans/i-want-to-create-compiled-brooks.md`.
 - Playback: Kokoro pads each clip with ~0.3 s of silence before and ~0.47 s after. The page trims that and schedules clips back to back on the audio clock. Chunks are one sentence first (at least 25 chars), then at least 140 chars.
 - Measured 2026-10-27 in Chromium (desktop, Kokoro cached): about 1.0 s hearing, 1.0 s thinking and 0.9 s voice, so about 2–3 s from the end of speech to the first sound.
 - To test without a microphone: in the browser console, have Kokoro synthesize a question, patch `navigator.mediaDevices.getUserMedia` to return a clone of a `MediaStreamDestination` stream, click Start, and play the clip into it.
+
+## Portfolio pop-up
+- santiagolabarca.vercel.app has a "Talk to my AI assistant" button (portfolio repo, `voice.js`) that iframes `/demo?embed=1&engine=open&theme=light|dark`. Embed mode hides the title and subtitle and follows the site's theme.
+- `vercel.json` sets `frame-ancestors` so only the portfolio (and localhost:4322) can frame `/demo`. A new host for the button must be added there and to `DEFAULT_ORIGINS`.
+- Phones play `web/greeting-orpheus.wav` (Orpheus, voice hannah) instead of synthesizing the greeting, to save the 3,600-character daily free quota. Regenerate it if the greeting text or voice changes.
