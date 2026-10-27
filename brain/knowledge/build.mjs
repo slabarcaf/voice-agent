@@ -26,18 +26,8 @@ export function renderPortfolio(c) {
   if (real(c.hero.tagline)) out.push(`Tagline: ${c.hero.tagline}`);
   if (real(c.hero.sub)) out.push(c.hero.sub);
 
-  out.push(`\n### Experience by company (newest first)`);
-  const themes = Object.fromEntries(c.themes.map((t) => [t.id, t.label]));
-  for (const co of c.companies) {
-    const roles = co.roles.map((r) => `${r.title} (${r.period})`).join("; ");
-    out.push(`\n#### ${co.name} — ${co.place}`);
-    if (real(co.context)) out.push(co.context);
-    out.push(`Roles: ${roles}`);
-    for (const r of c.results.filter((r) => r.company === co.id)) {
-      const bullets = (r.bullets || []).filter(real).map((b) => `  - ${b}`).join("\n");
-      out.push(`- ${r.headline} [${themes[r.theme] || r.theme}; ${r.role}]\n${bullets}`);
-    }
-  }
+  // Experience is left out on purpose: it restates the résumé, which is authoritative and
+  // already in the pack. Every token here is paid on every turn.
 
   out.push(`\n### Personal projects`);
   for (const p of c.projects) {

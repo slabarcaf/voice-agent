@@ -17,3 +17,8 @@ test("providers without keys are skipped", () => {
   assert.deepEqual(c.map((x) => x.provider), ["groq"]);
   assert.equal(c[0].route, "smart");
 });
+test("fast turns prefer Haiku, smart turns Sonnet, Groq last", () => {
+  const env = { GROQ_API_KEY: "g", ANTHROPIC_API_KEY: "a" };
+  assert.deepEqual(candidates(AGENTS.resume, "Where did he study?", env).map((x) => x.model), ["claude-haiku-5-5", "openai/gpt-oss-120b"]);
+  assert.deepEqual(candidates(AGENTS.resume, "Why hire him?", env).map((x) => x.model), ["claude-sonnet-5-5", "openai/gpt-oss-120b"]);
+});

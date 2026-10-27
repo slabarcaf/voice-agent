@@ -1,10 +1,11 @@
 // Text-only eval of the brain: language, facts, refusals, route, latency.
-//   node --env-file=.env.local evals/run.mjs [--only id1,id2]
+//   node --env-file=.env.local evals/run.mjs [--only id1,id2] [--delay seconds] [--verbose]
 import fs from "node:fs";
 import { respond } from "../brain/respond.mjs";
 
 const qs = JSON.parse(fs.readFileSync(new URL("./questions.json", import.meta.url)));
 const only = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1].split(",") : null;
+const delayMs = process.argv.includes("--delay") ? Number(process.argv[process.argv.indexOf("--delay") + 1]) * 1000 : 0;
 
 const ES = /\b(el|la|los|las|de|que|en|es|su|para|con|por|una|del|está|también)\b/gi;
 const EN = /\b(the|and|is|he|his|for|with|of|to|in|was|has|at|on|also)\b/gi;
@@ -14,6 +15,7 @@ const has = (t, s) => t.toLowerCase().includes(s.toLowerCase());
 let passed = 0;
 const rows = [];
 for (const c of qs.filter((c) => !only || only.includes(c.id))) {
+  if (delayMs && rows.length) await new Promise((r) => setTimeout(r, delayMs)); // free-tier TPM limits
   const t0 = performance.now();
   let ttft = null, text = "", meta = {}, error = null;
   try {

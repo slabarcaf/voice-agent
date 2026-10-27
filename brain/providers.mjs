@@ -8,7 +8,8 @@ export const PROVIDERS = {
     const groq = new Groq({ apiKey: env.GROQ_API_KEY });
     const stream = await groq.chat.completions.create({
       model,
-      max_tokens: maxTokens,
+      // gpt-oss reasons before answering; its reasoning tokens count against max_tokens.
+      ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low", max_tokens: maxTokens * 4 } : { max_tokens: maxTokens }),
       stream: true,
       messages: [{ role: "system", content: system }, ...messages],
     });
@@ -28,8 +29,8 @@ export const PROVIDERS = {
       messages,
       // Short spoken answers: low effort keeps time-to-first-word down.
       output_config: { effort: "low" },
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      // Server-side refusal fallback exists for Sonnet/Opus, not Haiku.
+      ...(model.startsWith("claude-haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" }),
     });
     for await (const event of stream) {
       if (event.type === "content_block_delta" && event.delta.type === "text_delta") yield event.delta.text;
