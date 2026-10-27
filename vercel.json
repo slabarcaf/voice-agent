@@ -2,5 +2,8 @@
   "functions": {
     "api/*.js": { "includeFiles": "brain/**", "maxDuration": 30 }
   },
-  "rewrites": [{ "source": "/demo", "destination": "/web/demo.html" }]
+  "rewrites": [
+    { "source": "/demo", "destination": "/web/demo.html" },
+    { "source": "/api/llm/:rest*", "destination": "/api/llm" }
+  ]
 }

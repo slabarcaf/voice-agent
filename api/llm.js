@@ -14,6 +14,8 @@ export default async function handler(req, res) {
   if (blocked) return res.status(blocked.status).json({ error: blocked.error });
 
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+  // Shape only, never content: lets us see what each caller (ElevenLabs, browser) sends.
+  console.log(JSON.stringify({ path: req.url, keys: Object.keys(body), roles: (body.messages || []).map((m) => m.role), tools: (body.tools || []).map((t) => t.function?.name || t.type) }));
   const id = `chatcmpl-${Date.now().toString(36)}`;
   const created = Math.floor(Date.now() / 1000);
   const agentId = req.query?.agent || "resume";
