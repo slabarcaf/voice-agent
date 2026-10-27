@@ -2,7 +2,7 @@
 
 Voice agent for Santiago's portfolio, built twice over one shared brain:
 - **A, managed:** ElevenLabs Agents. STT, turn-taking and TTS all happen at ElevenLabs; the LLM is "Custom LLM" → our `/api/llm`.
-- **B, open source:** browser VAD → Groq Whisper → `/api/llm` → Kokoro TTS on the Oracle VM.
+- **B, open source:** Silero VAD (browser) → Whisper on Groq (`/api/stt`) → `/api/llm` → Kokoro-82M running in the visitor's browser on WebGPU.
 
 Production: https://voice-agent-three-sable.vercel.app (pushing to `main` deploys).
 Plan of record: `~/.claude/plans/i-want-to-create-compiled-brooks.md`.
@@ -20,3 +20,10 @@ Plan of record: `~/.claude/plans/i-want-to-create-compiled-brooks.md`.
 - ElevenLabs calls `<BRAIN_URL>/chat/completions`, and `vercel.json` rewrites that to `/api/llm`. It sends a `language_detection` tool. `api/llm.js` answers with that tool call whenever the visitor switches language, because the English agent model (`eleven_flash_v2`, required for `en`) can't speak Spanish; the `es` preset switches models.
 - Auth is on: sessions only start through `POST /api/eleven-session`, which returns a WebRTC token. The test page is `/demo`.
 - To test without a microphone: `POST /v1/convai/agents/{id}/simulate-conversation`.
+
+## Version B (open source), live since 2026-10-27
+- `/demo?engine=open` or the B toggle. The page wires it all up (`web/demo.html`). Silero VAD v5 (`@ricky0123/vad-web` 0.0.31 + onnxruntime-web 1.24.3 from jsDelivr) cuts each utterance after 700 ms of silence and posts a 16 kHz WAV to `/api/stt`. That endpoint calls Whisper large-v3-turbo on Groq's free tier, with a vocabulary prompt for names, and returns `{text, lang}`. The page then streams `/api/llm`, speaks it sentence by sentence, and lets the visitor barge in.
+- TTS is Kokoro (`web/kokoro-worker.js`, kokoro-js 1.2.1, fp32, voice `af_heart`) inside a Web Worker. **WebGPU only:** on WASM it ran 1.6x slower than real time. It is skipped on phones because the model is ~330 MB. Spanish, phones, and anything without WebGPU use the browser's `speechSynthesis`, because kokoro-js has English voices only.
+- Not on the Oracle VM. It is the 1 GB E2.1.Micro and runs the Sydney bot, which has no room for a TTS server. A server-side Kokoro (which would add Spanish voices) needs a bigger host, such as an Oracle Ampere A1 instance created in the console.
+- Measured 2026-10-27 in Chromium (desktop, Kokoro cached): about 1.0 s hearing, 1.0 s thinking and 0.9 s voice, so about 2–3 s from the end of speech to the first sound.
+- To test without a microphone: in the browser console, have Kokoro synthesize a question, patch `navigator.mediaDevices.getUserMedia` to return a clone of a `MediaStreamDestination` stream, click Start, and play the clip into it.
