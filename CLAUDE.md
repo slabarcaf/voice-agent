@@ -13,4 +13,4 @@ Plan of record: `~/.claude/plans/i-want-to-create-compiled-brooks.md`.
 - `/api/llm` ignores the caller's system prompt and `model`. ElevenLabs authenticates with `Authorization: Bearer $LLM_SHARED_SECRET`; browsers are origin-checked.
 - `VOICE_ENABLED=false` in Vercel turns everything off.
 - Vercel login must be **slabarcaf** (`vercel whoami`).
-- Local checks: run `npm test`, then `vercel env pull .env.local && node --env-file=.env.local evals/run.mjs`.
+- Checks: run `npm test`, then `node evals/run.mjs --url https://voice-agent-three-sable.vercel.app` (13/13 on 2026-10-26). ANTHROPIC_API_KEY is Production-only and sensitive, so it cannot be pulled; local runs (`--env-file=.env.local`) therefore fall back to Groq.
