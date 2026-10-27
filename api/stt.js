@@ -4,6 +4,8 @@
 import Groq, { toFile } from "groq-sdk";
 import { cors, gate } from "../brain/guardrails.mjs";
 
+// Whisper's prompt biases spelling toward names it would otherwise mishear ("Zeppelin").
+const VOCAB = "Santiago Labarca, Xepelin, Berkeley Haas, Universidad de Chile, Grupo Consorcio, Sports & Entertainment Advisors, SEA.";
 const MAX_BYTES = 2_000_000; // ~60 s of 16 kHz 16-bit mono; well under Vercel's 4.5 MB body cap
 
 async function readBody(req) {
@@ -39,6 +41,7 @@ export default async function handler(req, res) {
       file: await toFile(audio, "utterance.wav", { type: "audio/wav" }),
       model: process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo",
       response_format: "verbose_json",
+      prompt: VOCAB,
       temperature: 0,
     });
     // Whisper names the language in full ("english", "spanish"); the page wants a code.
