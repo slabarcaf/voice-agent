@@ -8,12 +8,18 @@ Production: https://voice-agent-three-sable.vercel.app. Pushing to `main` deploy
 Plan of record: `~/.claude/plans/i-want-to-create-compiled-brooks.md`.
 
 - `brain/` holds everything that is not audio: the persona, the knowledge pack, the router, the providers and the guardrails. Change behaviour here and both engines follow.
-- Facts come only from `brain/knowledge/knowledge.md`, which `npm run knowledge` generates from `../portfolio/content.js` plus `sources/resume.txt` (the public CV with the phone number removed). Numbers come from the CV only. The private career-evidence notes are never a source.
+- Facts come only from `brain/knowledge/knowledge.md`. `npm run knowledge` generates it from three sources:
+  - `../portfolio/content.js`;
+  - `sources/resume.txt`, the public CV with the phone number removed;
+  - `sources/stories.md`: achievements, the two weaknesses he names and three failures, rewritten from Santiago's private Notion "Behavioral Story Bank".
+
+  The CV wins on every number.
+- `stories.md` is a hand-curated extract and is **never synced** from Notion. That page also holds coaching notes, interview tactics, conflicts and other people's details. To add a story, rewrite it into `stories.md`, show Santiago the exact text, and run the `priv-*` evals. The private career-evidence notes are never a source.
 - Routes live in `brain/agents.mjs`: simple turns go to Haiku 5.5, fit and judgment turns go to Sonnet 5.5, and Groq gpt-oss-120b is the fallback for both. The fallback is free but capped at 8k tokens/min, which is too little for live use on its own. Model ids are env vars (`CLAUDE_FAST_MODEL`, `CLAUDE_SMART_MODEL`, `GROQ_FAST_MODEL`).
 - `/api/llm` ignores the caller's system prompt and `model`. ElevenLabs authenticates with `Authorization: Bearer $LLM_SHARED_SECRET`; browsers are origin-checked.
 - `VOICE_ENABLED=false` in Vercel turns everything off.
 - Vercel login must be **slabarcaf** (`vercel whoami`).
-- Checks: run `npm test`, then `node evals/run.mjs --url https://voice-agent-three-sable.vercel.app` (13/13 on 2026-10-26). ANTHROPIC_API_KEY is Production-only and sensitive, so it cannot be pulled; local runs (`--env-file=.env.local`) therefore fall back to Groq.
+- Checks: run `npm test`, then `node evals/run.mjs --url https://voice-agent-three-sable.vercel.app` (22/22 on 2026-10-27; pass `--delay 4`, because back-to-back bursts from one IP trip Vercel's automatic DDoS challenge, which returns 403 "Security Checkpoint", lasts a few minutes, and can't be bypassed on the free plan). ANTHROPIC_API_KEY is Production-only and sensitive, so it cannot be pulled; local runs (`--env-file=.env.local`) therefore fall back to Groq.
 
 ## Version A (ElevenLabs), live since 2026-10-26
 - The agent is `eleven/agent.json` → `agentId`, voice Ashley Gordon `MPg42ZNt9M5HK0OndUTJ` (from the Voice Library, added to the account). Change it by editing `eleven/setup.mjs`, then run `node --env-file=.env.local eleven/setup.mjs` (idempotent, PATCHes the agent).
