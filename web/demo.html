@@ -219,7 +219,8 @@
     const messages = [{ role: "assistant", content: GREETING.en }];
     let gen = 0;               // bumps on every interruption; stale work checks it and stops
     let speaking = 0;          // sentences queued or playing
-    let source = null;         // the Kokoro clip playing right now
+    const live = new Set();    // Kokoro clips scheduled or playing
+    let nextAt = 0;            // audio-clock time where the next clip starts
     let playChain = Promise.resolve();
     let controller = null;
     let mark = {};             // timestamps for the latency readout of the current turn
@@ -235,18 +236,30 @@
       setStatus("speaking", "Speaking… (you can interrupt)");
     };
 
-    function playPcm(audio, rate, g) {
-      return new Promise((done) => {
-        if (g !== gen) return done();
-        const buf = audioCtx.createBuffer(1, audio.length, rate);
-        buf.copyToChannel(audio, 0);
-        source = audioCtx.createBufferSource();
-        source.buffer = buf;
-        source.connect(audioCtx.destination);
-        source.onended = () => { source = null; done(); };
-        firstSound(g);
-        source.start();
-      });
+    // Kokoro pads every clip with ~0.3 s of silence before and ~0.47 s after, which left
+    // ~0.8 s of dead air between sentences. Keep just enough for a natural pause.
+    function trimSilence(audio, rate) {
+      let a = 0, b = audio.length - 1;
+      while (a < b && Math.abs(audio[a]) < 0.01) a++;
+      while (b > a && Math.abs(audio[b]) < 0.01) b--;
+      return audio.subarray(Math.max(0, a - 0.05 * rate), Math.min(audio.length, b + 0.12 * rate));
+    }
+
+    // Clips are placed back to back on the audio clock, so the next one is queued before the
+    // current one ends. Resolves when the clip finishes (or is stopped).
+    function schedulePcm(audio, rate, g) {
+      const pcm = trimSilence(audio, rate);
+      const buf = audioCtx.createBuffer(1, pcm.length, rate);
+      buf.copyToChannel(pcm, 0);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtx.destination);
+      const at = Math.max(audioCtx.currentTime + 0.03, nextAt);
+      src.start(at);
+      nextAt = at + buf.duration;
+      live.add(src);
+      setTimeout(() => firstSound(g), (at - audioCtx.currentTime) * 1000);
+      return new Promise((done) => (src.onended = () => { live.delete(src); done(); }));
     }
 
     function speakSystem(text, lang, g) {
@@ -261,26 +274,29 @@
       });
     }
 
-    // Synthesis starts as soon as a sentence arrives; playback stays in order.
+    // Synthesis starts as soon as a chunk arrives; playback stays in order.
     function enqueue(text, lang, g) {
       speaking++;
+      const finished = () => { speaking--; idle(); };
       const useKokoro = lang === "en" && tts.ready;
       const clip = useKokoro ? tts.speak(text).catch(() => null) : null;
       playChain = playChain.then(async () => {
-        if (g === gen) {
-          const out = clip && (await clip);
-          if (out) await playPcm(out.audio, out.rate, g);
-          else await speakSystem(text, lang, g);
-        }
-        speaking--;
-        idle();
+        const out = g === gen && clip && (await clip);
+        if (g !== gen) return finished();
+        if (out) { schedulePcm(out.audio, out.rate, g).then(finished); return; }
+        // System voice: let any queued Kokoro audio finish first, then speak and wait.
+        await new Promise((r) => setTimeout(r, Math.max(0, (nextAt - audioCtx.currentTime) * 1000)));
+        if (g === gen) await speakSystem(text, lang, g);
+        finished();
       });
     }
 
     function interrupt() {
       gen++;
       controller?.abort();
-      try { source?.stop(); } catch {}
+      for (const src of live) try { src.stop(); } catch {}
+      live.clear();
+      nextAt = 0;
       speechSynthesis.cancel();
     }
 
@@ -314,15 +330,20 @@
         if (!lr.ok) throw new Error((await lr.json().catch(() => ({}))).error || `brain failed (${lr.status})`);
 
         const bubble = say("agent", "");
-        let full = "", pending = "", sse = "";
+        let full = "", pending = "", sse = "", chunks = 0;
         const flush = (force) => {
-          // Speak whole sentences; hold short fragments so the voice doesn't chop.
-          const re = /^([\s\S]*?[.!?…])(\s+|$)/;
-          let m;
-          while ((m = pending.match(re)) && (m[1].length >= 25 || force)) {
-            if (m[2] === "" && !force) break; // might be "Dr." mid-stream; wait for more
-            enqueue(m[1].trim(), heard.lang, g);
-            pending = pending.slice(m[0].length);
+          // Cut at sentence ends. The first chunk is short so the voice starts fast; later
+          // ones group sentences (fewer seams, better intonation). A boundary needs a space
+          // after it, so "1.25" and a "." that just streamed in don't count yet.
+          for (;;) {
+            const min = chunks === 0 ? 25 : 140;
+            const re = /[.!?…](?=\s)/g;
+            let cut = -1, m;
+            while ((m = re.exec(pending))) if (m.index + 1 >= min) { cut = m.index + 1; break; }
+            if (cut < 0) break;
+            enqueue(pending.slice(0, cut).trim(), heard.lang, g);
+            chunks++;
+            pending = pending.slice(cut);
           }
           if (force && pending.trim()) { enqueue(pending.trim(), heard.lang, g); pending = ""; }
         };
