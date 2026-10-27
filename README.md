@@ -39,3 +39,5 @@ Plan of record: `~/.claude/plans/i-want-to-create-compiled-brooks.md`.
 - santiagolabarca.vercel.app has a "Talk to my AI assistant" button (portfolio repo, `voice.js`) that iframes `/demo?embed=1&engine=open&theme=light|dark`. Embed mode hides the title and subtitle and follows the site's theme.
 - `vercel.json` sets `frame-ancestors` so only the portfolio (and localhost:4322) can frame `/demo`. A new host for the button must be added there and to `DEFAULT_ORIGINS`.
 - Phones play `web/greeting-orpheus.wav` (Orpheus, voice hannah) instead of synthesizing the greeting, to save the 3,600-character daily free quota. Regenerate it if the greeting text or voice changes.
+- Engine B is half-duplex since 2026-10-27: through speakers the mic heard the assistant and it answered itself in a loop ("hello, hello…"). Speech that starts while it talks, or within 500 ms after, is ignored; the **Interrupt** button cuts in. Verified by routing all page audio back into a fake mic: one turn, no loop.
+- Test silently: Santiago studies next to this Mac. Route page audio into a `MediaStreamDestination`, never the speakers.
