@@ -39,6 +39,7 @@
   #talk { width: 120px; height: 120px; border-radius: 50%; border: none; background: var(--accent); color: var(--accent-text); font: 600 1rem system-ui, sans-serif; cursor: pointer; transition: transform .15s; }
   #talk:active { transform: scale(.97); }
   #talk.live { background: var(--live); }
+  #cut { margin-top: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 6px 16px; font: inherit; font-size: .9rem; cursor: pointer; }
   #status { margin: 16px 0 0; color: var(--muted); min-height: 1.5em; }
   #status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: middle; }
   #status.speaking .dot { background: var(--accent); }
@@ -56,6 +57,10 @@
   .embed .sub { display: none; } /* the portfolio panel header says it */
   .embed .engines { justify-content: center; margin-bottom: 16px; }
   .embed .card { padding: 20px 16px; }
+  #examples { margin-top: 20px; font-size: .9rem; color: var(--muted); }
+  #examples p { margin: 0 0 8px; }
+  #examples ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+  #examples li { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; color: var(--text); }
   footer { margin-top: 32px; color: var(--muted); font-size: .8rem; text-align: center; }
 </style>
 </head>
@@ -71,6 +76,7 @@
 
   <div class="card">
     <button id="talk" aria-live="polite">Start</button>
+    <div><button id="cut" type="button" hidden>Interrupt</button></div>
     <p id="status"><span class="dot"></span><span id="status-text">Ready. Uses your microphone; calls last up to 3 minutes.</span></p>
     <div class="stats">
       <span>Last reply after <b id="lat">–</b></span>
@@ -78,6 +84,18 @@
       <span>Elapsed <b id="clock">0:00</b></span>
     </div>
   </div>
+
+  <section id="examples" aria-label="Things you can ask">
+    <p>Press Start and ask out loud, for example:</p>
+    <ul>
+      <li>"What did he do at Xepelin?"</li>
+      <li>"Why would he be a good fit for a strategy role?"</li>
+      <li>"What's his biggest weakness?"</li>
+      <li>"Tell me about a failure and what he learned."</li>
+      <li>"What has he built with AI?"</li>
+      <li>"¿Dónde estudió y qué hace ahora?"</li>
+    </ul>
+  </section>
 
   <div id="log" aria-live="polite"></div>
   <footer id="foot"></footer>
@@ -99,12 +117,17 @@
   const say = (role, text) => {
     const div = document.createElement("div");
     div.className = `msg ${role}`;
+    if (role === "user") $("examples").hidden = true; // the visitor has the idea now
     div.textContent = text;
     log.append(div);
     div.scrollIntoView({ behavior: "smooth", block: "end" });
     return div;
   };
-  const setStatus = (mode, text) => { statusEl.className = mode; statusText.textContent = text; };
+  const setStatus = (mode, text) => {
+    statusEl.className = mode;
+    statusText.textContent = text;
+    $("cut").hidden = !(mode === "speaking" && engine === "open" && call?.cut);
+  };
   const secs = (ms) => `${(ms / 1000).toFixed(1)} s`;
 
   function setEngine(next) {
@@ -240,7 +263,18 @@
     let controller = null;
     let mark = {};             // timestamps for the latency readout of the current turn
 
-    const idle = () => { if (!speaking && call) setStatus("listening", "Listening…"); };
+    // Engine B is half-duplex: through speakers the mic hears the assistant's own voice (echo
+    // cancellation doesn't fully cover audio the page plays itself), and it would answer itself
+    // in a loop. So speech that starts while it talks, or just after, is ignored; the
+    // Interrupt button is how a visitor cuts in.
+    let quietUntil = 0;        // the mic counts again after this (room echo tail)
+    let echo = false;          // the current speech segment started while the assistant talked
+    const busy = () => speaking > 0 || performance.now() < quietUntil;
+    const idle = () => {
+      if (speaking) return;
+      quietUntil = performance.now() + 500;
+      if (call) setStatus("listening", "Listening…");
+    };
     const firstSound = (g) => {
       if (g !== gen || mark.spoke) return;
       mark.spoke = performance.now();
@@ -248,7 +282,7 @@
         $("lat").textContent = secs(mark.spoke - mark.end);
         $("t-tts").textContent = secs(mark.spoke - mark.firstText);
       }
-      setStatus("speaking", "Speaking… (you can interrupt)");
+      setStatus("speaking", "Speaking… (tap Interrupt to cut in)");
     };
 
     // Kokoro pads every clip with ~0.3 s of silence before and ~0.47 s after, which left
@@ -428,8 +462,9 @@
       onnxWASMBasePath: ORT,
       redemptionMs: 550,   // silence that ends a turn; the 1.4 s default feels sluggish, 700 still lagged
       minSpeechMs: 300,
-      onSpeechRealStart: () => { interrupt(); setStatus("listening", "Listening…"); },
-      onSpeechEnd: (audio) => turn(audio),
+      onSpeechStart: () => { echo = busy(); },
+      onSpeechRealStart: () => { if (!echo) { interrupt(); setStatus("listening", "Listening…"); } },
+      onSpeechEnd: (audio) => { if (!echo) turn(audio); },
     });
 
     // The greeting doesn't wait for Kokoro: it uses Kokoro only if the model is cached.
@@ -452,6 +487,7 @@
     }
 
     return {
+      cut: () => { interrupt(); quietUntil = performance.now() + 300; setStatus("listening", "Listening…"); },
       end: async () => {
         interrupt();
         await mic.destroy();
@@ -481,6 +517,7 @@
   }
 
   talk.addEventListener("click", () => (call ? end() : start()));
+  $("cut").addEventListener("click", () => call?.cut?.());
 </script>
 </body>
 </html>
