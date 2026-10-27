@@ -355,7 +355,9 @@
           // ones group sentences (fewer seams, better intonation). A boundary needs a space
           // after it, so "1.25" and a "." that just streamed in don't count yet.
           for (;;) {
-            const min = chunks === 0 ? 25 : 140;
+            // Orpheus (the server voice) works best under ~200 characters, so it gets one
+            // sentence per chunk; Kokoro gets longer groups.
+            const min = chunks === 0 ? 25 : kokoroUsable ? 140 : 60;
             const re = /[.!?…](?=\s)/g;
             let cut = -1, m;
             while ((m = re.exec(pending))) if (m.index + 1 >= min) { cut = m.index + 1; break; }
@@ -399,7 +401,7 @@
       model: "v5",
       baseAssetPath: VAD,
       onnxWASMBasePath: ORT,
-      redemptionMs: 700,   // silence that ends a turn; the 1.4 s default feels sluggish
+      redemptionMs: 550,   // silence that ends a turn; the 1.4 s default feels sluggish, 700 still lagged
       minSpeechMs: 300,
       onSpeechRealStart: () => { interrupt(); setStatus("listening", "Listening…"); },
       onSpeechEnd: (audio) => turn(audio),
@@ -439,6 +441,8 @@
     const audioCtx = engine === "open" ? new AudioContext() : null;
     // Phones (iOS especially) also mute speechSynthesis unless it first speaks inside a click.
     if (engine === "open") speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(" "), { volume: 0 }));
+    // Wake the serverless functions now, so the first answer doesn't pay their cold starts.
+    if (engine === "open") for (const path of ["/api/stt", "/api/llm", "/api/tts"]) fetch(path, { method: "OPTIONS" }).catch(() => {});
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => s.getTracks().forEach((t) => t.stop()));
       call = await (engine === "open" ? startOpen(audioCtx) : startManaged());
