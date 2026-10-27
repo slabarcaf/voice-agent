@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Voice Agent Demo</title>
 <meta name="robots" content="noindex">
+<script>
+  // ?embed=1 is the portfolio pop-up: no page title, and it follows the site's theme (?theme=).
+  const q = new URLSearchParams(location.search);
+  if (q.get("embed")) document.documentElement.classList.add("embed");
+  if (/^(light|dark)$/.test(q.get("theme"))) document.documentElement.dataset.theme = q.get("theme");
+</script>
 <style>
   :root {
     --bg: #f7f7f5; --surface: #ffffff; --text: #1b1b1a; --muted: #6b6b66; --line: #e4e3df;
@@ -15,6 +21,10 @@
       --bg: #141413; --surface: #1d1d1b; --text: #ecebe6; --muted: #9a9993; --line: #2e2e2b;
       --accent: #7d9cf0; --accent-text: #0f1424; --live: #f07272; --ok: #6cc48a;
     }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141413; --surface: #1d1d1b; --text: #ecebe6; --muted: #9a9993; --line: #2e2e2b;
+    --accent: #7d9cf0; --accent-text: #0f1424; --live: #f07272; --ok: #6cc48a;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -41,6 +51,11 @@
   .msg.user { align-self: flex-end; background: var(--accent); color: var(--accent-text); }
   .msg.agent { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); }
   .msg.note { align-self: center; color: var(--muted); font-size: .85rem; background: none; padding: 0; }
+  .embed main { padding: 16px 16px 24px; }
+  .embed h1 { display: none; }
+  .embed .sub { margin-bottom: 16px; font-size: .9rem; }
+  .embed .engines { justify-content: center; margin-bottom: 16px; }
+  .embed .card { padding: 20px 16px; }
   footer { margin-top: 32px; color: var(--muted); font-size: .8rem; text-align: center; }
 </style>
 </head>
@@ -292,10 +307,11 @@
     }
 
     // Synthesis starts as soon as a chunk arrives; playback stays in order.
-    function enqueue(text, lang, g) {
+    function enqueue(text, lang, g, recorded) {
       speaking++;
       const finished = () => { speaking--; idle(); };
-      const clip = lang !== "en" ? null
+      const clip = recorded ? recorded.then((c) => c || speakServer(text))
+        : lang !== "en" ? null
         : tts.ready ? tts.speak(text).catch(() => null)
         : !kokoroUsable ? speakServer(text)
         : null;
@@ -308,6 +324,15 @@
         if (g === gen) await speakSystem(text, lang, g);
         finished();
       });
+    }
+
+    async function savedGreeting() {
+      try {
+        const r = await fetch("/web/greeting-orpheus.wav");
+        if (!r.ok) throw new Error("greeting " + r.status);
+        const buf = await audioCtx.decodeAudioData(await r.arrayBuffer());
+        return { audio: buf.getChannelData(0), rate: buf.sampleRate };
+      } catch { return null; }
     }
 
     function interrupt() {
@@ -412,7 +437,9 @@
     mic.start();
     startClock();
     say("agent", GREETING.en);
-    enqueue(GREETING.en, "en", gen);
+    // Phones play a saved Orpheus recording of the greeting, so it doesn't spend the server
+    // voice's daily quota (3,600 characters on Groq's free tier).
+    enqueue(GREETING.en, "en", gen, kokoroUsable ? null : savedGreeting());
     if (!kokoroUsable) say("note", "This device can't run the in-browser voice (it needs WebGPU on a computer), so the open-source Orpheus voice speaks from the server.");
     else if (!tts.ready && !tts.failed) {
       const note = say("note", "Loading the open-source voice (about 330 MB, once). Your device's voice fills in until then.");
