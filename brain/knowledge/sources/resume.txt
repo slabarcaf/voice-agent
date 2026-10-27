@@ -1,0 +1,48 @@
+SANTIAGO LABARCA
+santiago.labarca@berkeley.edu · linkedin.com/in/santiagolabarca/
+
+EDUCATION
+UNIVERSITY OF CALIFORNIA, BERKELEY, HAAS SCHOOL OF BUSINESS — Aug 2025–May 2027
+Master of Business Administration — Berkeley Haas merit-based scholarship
+- Consulting Team Lead, Operations Improvement & Digital Transformation project (S3, Social Sector Solutions)
+- Introduction to Finance Course Reader | Personal Finance Management Course Reader
+- Golf Club (Co-president), Fintech Club
+UNIVERSIDAD DE CHILE, Santiago, Chile — Mar 2014–Dec 2019
+Bachelor of Science in Business Administration — Graduated with Distinction
+- TA in Business Intelligence and Analytics
+
+EXPERIENCE
+SPORTS & ENTERTAINMENT ADVISORS, San Francisco, US — 2026–Present
+Sports consulting firm focused on ticketing and revenue optimization for professional teams, leagues, and event properties.
+Consulting intern (Strategy & Business Operations)
+Go-to-Market, Pricing Strategy & Organization Design
+- Built the pricing and inventory strategy for a client's move into a 3x-capacity arena, unlocking $10M in incremental annual revenue (~100% growth); sized the sales org to capture it and designed a new rep commission structure.
+- Developed an automated account-level renewal risk model that scored the full season-ticket base and drove campaign sequencing and outreach priority, concentrating rep effort on the ~40% of accounts carrying ~60% of renewal revenue.
+- Built SEA's AI roadmap by scoring five recurring workflows on frequency, risk, and value; shipped the top-ranked automation for client deliverable production and embedded it into new-hire onboarding.
+
+XEPELIN, Santiago, Chile | CDMX, Mexico — 2021–2025
+LatAm B2B lending fintech specialized in supply chain finance, with a $110M Series B backed by Kaszek, DST, PayPal and Avenir.
+Partnerships Lead (2024–2025), Portfolio Lead (2022–2024), Portfolio Associate (2021–2022)
+Revenue Growth & Operating Cadence
+- Drove 4x MAU growth for the Partnerships team by operationalizing a product-led expansion motion: launched API integrations and a self-serve customer/partner portal, standardizing onboarding and adoption workflows to remove friction at scale.
+- Increased annual net revenue 150% ($500K to $1.25M) and grew CLV by building a data-driven engine to diagnose funnel bottlenecks and launching prioritized retention/acquisition fixes, tracking impact through cohort and churn analysis.
+- Built an end-to-end playbook from lead generation through contract close, onboarding, and ongoing management; reduced time-to-active by 40% while increasing clients' self-serve rate, cutting operations time by 25%.
+Portfolio Strategy & Performance Analytics
+- Deprioritized 15% of clients driving 65% of lending defaults by building an invoice-level risk pricing and provisions system and analyzing payor payment patterns; improved portfolio health and increased loss-adjusted unit economics across the portfolio.
+- Led a bi-weekly C-level performance committee: turned granular default data into risk tiers and action plans, aligned owners/OKRs, and accelerated decisions on credit policy and customer prioritization.
+Team Leadership & Operational Scale
+- Built and guided a three-person portfolio strategy team; expanded team operations internationally into Mexico, growing the portfolio from $84M to $267M (200%+).
+- Reduced Partnerships overhead 30% by consolidating and leading three siloed teams into a streamlined 8-person org serving banks and SMB finance institutions; redesigned workflows, roles, and capacity planning to increase efficiency.
+
+GRUPO CONSORCIO, Santiago, Chile — 2020–2021
+Insurance and bank group with consolidated assets over $20B and a strong Chilean banking presence with a loan portfolio of $5.4B.
+Sr. Internal Consultant (2021), Internal Consultant (2020)
+Strategy & Project Management
+- Chaired a weekly steering committee of 8+ senior managers from the bank's and the insurer's real estate units, owning prioritization and trade-off calls across a joint portfolio and closing six cross-entity projects end to end.
+- Modeled and introduced a specialized mortgage product for state-subsidized housing, expanding the addressable market by $800M annually; partnered with Product/Engineering, Risk, and Legal, and presented it directly to the board of directors.
+- Directed and executed Chile's first digital mortgage pre-approval system that allowed instant approvals, cutting approval time from two days to instant results, working alongside design, product engineering and legal.
+
+ADDITIONAL
+- Skills: SQL, Python, Tableau, HubSpot; LLM workflow design and agent automation (Claude Code)
+- Entrepreneurship: Agora Medios SpA, Co-founder and COO (2014–2019): music festivals for students in schools and universities throughout Chile, reaching annual revenue over $1M.
+- Interests: Avid golfer (national overall champion 2004, 2006) and competitive mountain-biker.
