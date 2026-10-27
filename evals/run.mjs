@@ -1,11 +1,37 @@
 // Text-only eval of the brain: language, facts, refusals, route, latency.
-//   node --env-file=.env.local evals/run.mjs [--only id1,id2] [--delay seconds] [--verbose]
+//   node --env-file=.env.local evals/run.mjs [--only id1,id2] [--delay seconds] [--verbose] [--url https://…]
 import fs from "node:fs";
 import { respond } from "../brain/respond.mjs";
 
 const qs = JSON.parse(fs.readFileSync(new URL("./questions.json", import.meta.url)));
 const only = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1].split(",") : null;
 const delayMs = process.argv.includes("--delay") ? Number(process.argv[process.argv.indexOf("--delay") + 1]) * 1000 : 0;
+const url = process.argv.includes("--url") ? process.argv[process.argv.indexOf("--url") + 1] : null;
+
+// --url runs the questions against a deployed /api/llm instead of the local brain.
+async function* remote(messages) {
+  const r = await fetch(`${url}/api/llm`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: url },
+    body: JSON.stringify({ messages, stream: true }),
+  });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  const [route, provider, model] = (r.headers.get("x-brain-route") || "").split(";");
+  yield { type: "meta", route, provider, model };
+  const decoder = new TextDecoder();
+  let buf = "";
+  for await (const chunk of r.body) {
+    buf += decoder.decode(chunk, { stream: true });
+    let i;
+    while ((i = buf.indexOf("\n\n")) >= 0) {
+      const line = buf.slice(0, i).replace(/^data: /, "");
+      buf = buf.slice(i + 2);
+      if (line === "[DONE]") return;
+      const text = JSON.parse(line).choices[0]?.delta?.content;
+      if (text) yield { type: "text", text };
+    }
+  }
+}
 
 const ES = /\b(el|la|los|las|de|que|en|es|su|para|con|por|una|del|está|también)\b/gi;
 const EN = /\b(the|and|is|he|his|for|with|of|to|in|was|has|at|on|also)\b/gi;
@@ -19,7 +45,7 @@ for (const c of qs.filter((c) => !only || only.includes(c.id))) {
   const t0 = performance.now();
   let ttft = null, text = "", meta = {}, error = null;
   try {
-    for await (const ev of respond({ messages: [{ role: "user", content: c.q }] })) {
+    for await (const ev of (url ? remote : (m) => respond({ messages: m }))([{ role: "user", content: c.q }])) {
       if (ev.type === "meta") meta = ev;
       else { ttft ??= performance.now() - t0; text += ev.text; }
     }
