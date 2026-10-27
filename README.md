@@ -4,7 +4,7 @@ Voice agent for Santiago's portfolio, built twice over one shared brain:
 - **A, managed:** ElevenLabs Agents. STT, turn-taking and TTS all happen at ElevenLabs; the LLM is "Custom LLM" → our `/api/llm`.
 - **B, open source:** Silero VAD (browser) → Whisper on Groq (`/api/stt`) → `/api/llm` → Kokoro-82M running in the visitor's browser on WebGPU.
 
-Production: https://voice-agent-three-sable.vercel.app (pushing to `main` deploys).
+Production: https://voice-agent-three-sable.vercel.app. Pushing to `main` deploys, but Git deploys have been skipped at least once (2026-10-27). If the site doesn't update, run `vercel deploy --prod --yes`.
 Plan of record: `~/.claude/plans/i-want-to-create-compiled-brooks.md`.
 
 - `brain/` holds everything that is not audio: the persona, the knowledge pack, the router, the providers and the guardrails. Change behaviour here and both engines follow.
@@ -25,5 +25,6 @@ Plan of record: `~/.claude/plans/i-want-to-create-compiled-brooks.md`.
 - `/demo?engine=open` or the B toggle. The page wires it all up (`web/demo.html`). Silero VAD v5 (`@ricky0123/vad-web` 0.0.31 + onnxruntime-web 1.24.3 from jsDelivr) cuts each utterance after 700 ms of silence and posts a 16 kHz WAV to `/api/stt`. That endpoint calls Whisper large-v3-turbo on Groq's free tier, with a vocabulary prompt for names, and returns `{text, lang}`. The page then streams `/api/llm`, speaks it sentence by sentence, and lets the visitor barge in.
 - TTS is Kokoro (`web/kokoro-worker.js`, kokoro-js 1.2.1, fp32, voice `af_heart`) inside a Web Worker. **WebGPU only:** on WASM it ran 1.6x slower than real time. It is skipped on phones because the model is ~330 MB. Spanish, phones, and anything without WebGPU use the browser's `speechSynthesis`, because kokoro-js has English voices only.
 - Not on the Oracle VM. It is the 1 GB E2.1.Micro and runs the Sydney bot, which has no room for a TTS server. A server-side Kokoro (which would add Spanish voices) needs a bigger host, such as an Oracle Ampere A1 instance created in the console.
+- Playback: Kokoro pads each clip with ~0.3 s of silence before and ~0.47 s after. The page trims that and schedules clips back to back on the audio clock. Chunks are one sentence first (at least 25 chars), then at least 140 chars.
 - Measured 2026-10-27 in Chromium (desktop, Kokoro cached): about 1.0 s hearing, 1.0 s thinking and 0.9 s voice, so about 2–3 s from the end of speech to the first sound.
 - To test without a microphone: in the browser console, have Kokoro synthesize a question, patch `navigator.mediaDevices.getUserMedia` to return a clone of a `MediaStreamDestination` stream, click Start, and play the clip into it.
