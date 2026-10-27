@@ -54,6 +54,7 @@ export async function gate(req, { kind = "turn", env = process.env } = {}) {
 
   const l = getLimiters(env);
   if (!l) return null; // no Redis configured (local dev): no limits
+  if (kind === "tts") return null; // one per sentence; its turn was already counted
   const ip = clientIp(req);
   const checks = [l.globalTurns.limit("all")];
   if (!trusted) checks.push((kind === "session" ? l.ipSessions : l.ipTurns).limit(ip));

@@ -274,12 +274,31 @@
       });
     }
 
+    // Where Kokoro can't run (phones, no WebGPU), English goes to Orpheus on the server
+    // (/api/tts). The first failure turns it off for the rest of the call.
+    let serverTts = true;
+    async function speakServer(text) {
+      if (!serverTts) return null;
+      try {
+        const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+        if (!r.ok) throw new Error("tts " + r.status);
+        const buf = await audioCtx.decodeAudioData(await r.arrayBuffer());
+        return { audio: buf.getChannelData(0), rate: buf.sampleRate };
+      } catch (err) {
+        serverTts = false;
+        console.warn("Server voice unavailable, using the device voice:", err.message);
+        return null;
+      }
+    }
+
     // Synthesis starts as soon as a chunk arrives; playback stays in order.
     function enqueue(text, lang, g) {
       speaking++;
       const finished = () => { speaking--; idle(); };
-      const useKokoro = lang === "en" && tts.ready;
-      const clip = useKokoro ? tts.speak(text).catch(() => null) : null;
+      const clip = lang !== "en" ? null
+        : tts.ready ? tts.speak(text).catch(() => null)
+        : !kokoroUsable ? speakServer(text)
+        : null;
       playChain = playChain.then(async () => {
         const out = g === gen && clip && (await clip);
         if (g !== gen) return finished();
@@ -392,7 +411,7 @@
     startClock();
     say("agent", GREETING.en);
     enqueue(GREETING.en, "en", gen);
-    if (!kokoroUsable) say("note", "This device can't run the open-source voice (it needs WebGPU on a computer), so you'll hear your device's own voice.");
+    if (!kokoroUsable) say("note", "This device can't run the in-browser voice (it needs WebGPU on a computer), so the open-source Orpheus voice speaks from the server.");
     else if (!tts.ready && !tts.failed) {
       const note = say("note", "Loading the open-source voice (about 330 MB, once). Your device's voice fills in until then.");
       const tick = setInterval(() => {
@@ -418,6 +437,8 @@
     setStatus("", "Asking for your microphone…");
     // Browsers only allow sound from an audio context created during the click itself.
     const audioCtx = engine === "open" ? new AudioContext() : null;
+    // Phones (iOS especially) also mute speechSynthesis unless it first speaks inside a click.
+    if (engine === "open") speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(" "), { volume: 0 }));
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => s.getTracks().forEach((t) => t.stop()));
       call = await (engine === "open" ? startOpen(audioCtx) : startManaged());
