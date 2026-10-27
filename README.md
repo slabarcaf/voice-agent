@@ -14,3 +14,9 @@ Plan of record: `~/.claude/plans/i-want-to-create-compiled-brooks.md`.
 - `VOICE_ENABLED=false` in Vercel turns everything off.
 - Vercel login must be **slabarcaf** (`vercel whoami`).
 - Checks: run `npm test`, then `node evals/run.mjs --url https://voice-agent-three-sable.vercel.app` (13/13 on 2026-10-26). ANTHROPIC_API_KEY is Production-only and sensitive, so it cannot be pulled; local runs (`--env-file=.env.local`) therefore fall back to Groq.
+
+## Version A (ElevenLabs), live since 2026-10-26
+- The agent is `eleven/agent.json` → `agentId`, voice Ashley Gordon `MPg42ZNt9M5HK0OndUTJ` (from the Voice Library, added to the account). Change it by editing `eleven/setup.mjs`, then run `node --env-file=.env.local eleven/setup.mjs` (idempotent, PATCHes the agent).
+- ElevenLabs calls `<BRAIN_URL>/chat/completions`, and `vercel.json` rewrites that to `/api/llm`. It sends a `language_detection` tool. `api/llm.js` answers with that tool call whenever the visitor switches language, because the English agent model (`eleven_flash_v2`, required for `en`) can't speak Spanish; the `es` preset switches models.
+- Auth is on: sessions only start through `POST /api/eleven-session`, which returns a WebRTC token. The test page is `/demo`.
+- To test without a microphone: `POST /v1/convai/agents/{id}/simulate-conversation`.
