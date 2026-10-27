@@ -76,7 +76,7 @@
   const MAX_CALL_MS = 180_000; // same 3-minute cap as the ElevenLabs agent
   const FOOTERS = {
     managed: "Engine A: ElevenLabs speech + Santiago's brain (Claude). Nothing is recorded by this page.",
-    open: "Engine B: Silero VAD + Whisper (on Groq) + Santiago's brain (Claude) + Kokoro, which runs in your browser on WebGPU (English on desktop; otherwise your device's voice). Nothing is recorded by this page.",
+    open: "Engine B: Silero VAD + Whisper (on Groq) + Santiago's brain (Claude) + an open-source voice: Kokoro in your browser on computers with WebGPU, Orpheus (on Groq) elsewhere. Spanish uses your device's voice. Nothing is recorded by this page.",
   };
   let engine = new URLSearchParams(location.search).get("engine") === "open" ? "open" : "managed";
   let call = null, startedAt = null, timer = null;
