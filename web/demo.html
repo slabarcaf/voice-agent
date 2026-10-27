@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice Agent Demo</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --text: #1b1b1a; --muted: #6b6b66; --line: #e4e3df;
+    --accent: #2f5bd3; --accent-text: #ffffff; --live: #d23f3f; --ok: #2f8a4c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413; --surface: #1d1d1b; --text: #ecebe6; --muted: #9a9993; --line: #2e2e2b;
+      --accent: #7d9cf0; --accent-text: #0f1424; --live: #f07272; --ok: #6cc48a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .engines { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .engines button { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: .9rem; cursor: pointer; }
+  .engines button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .engines button:disabled { opacity: .5; cursor: not-allowed; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; text-align: center; }
+  #talk { width: 120px; height: 120px; border-radius: 50%; border: none; background: var(--accent); color: var(--accent-text); font: 600 1rem system-ui, sans-serif; cursor: pointer; transition: transform .15s; }
+  #talk:active { transform: scale(.97); }
+  #talk.live { background: var(--live); }
+  #status { margin: 16px 0 0; color: var(--muted); min-height: 1.5em; }
+  #status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: middle; }
+  #status.speaking .dot { background: var(--accent); }
+  #status.listening .dot { background: var(--ok); }
+  .stats { display: flex; justify-content: center; gap: 24px; margin-top: 12px; font-size: .85rem; color: var(--muted); }
+  .stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+  #log { margin-top: 24px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { padding: 10px 14px; border-radius: 12px; max-width: 85%; line-height: 1.45; }
+  .msg.user { align-self: flex-end; background: var(--accent); color: var(--accent-text); }
+  .msg.agent { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); }
+  .msg.note { align-self: center; color: var(--muted); font-size: .85rem; background: none; padding: 0; }
+  footer { margin-top: 32px; color: var(--muted); font-size: .8rem; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Talk to Santiago's AI assistant</h1>
+  <p class="sub">Ask about his experience, projects or background, in English or Spanish. It's an AI, not Santiago.</p>
+
+  <div class="engines" role="group" aria-label="Voice engine">
+    <button data-engine="managed" aria-pressed="true">A · ElevenLabs</button>
+    <button data-engine="open" aria-pressed="false" disabled title="Coming in Phase 3">B · Open source (soon)</button>
+  </div>
+
+  <div class="card">
+    <button id="talk" aria-live="polite">Start</button>
+    <p id="status"><span class="dot"></span><span id="status-text">Ready. Uses your microphone; calls last up to 3 minutes.</span></p>
+    <div class="stats">
+      <span>Last reply after <b id="lat">–</b></span>
+      <span>Elapsed <b id="clock">0:00</b></span>
+    </div>
+  </div>
+
+  <div id="log" aria-live="polite"></div>
+  <footer>Engine A: ElevenLabs speech + Santiago's brain (Claude). Nothing is recorded by this page.</footer>
+</main>
+
+<script type="module">
+  import { Conversation } from "https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.27.0/+esm";
+
+  const $ = (id) => document.getElementById(id);
+  const talk = $("talk"), log = $("log"), statusEl = $("status"), statusText = $("status-text");
+  let convo = null, userDoneAt = null, startedAt = null, timer = null;
+
+  const say = (role, text) => {
+    const div = document.createElement("div");
+    div.className = `msg ${role}`;
+    div.textContent = text;
+    log.append(div);
+    div.scrollIntoView({ behavior: "smooth", block: "end" });
+  };
+  const setStatus = (mode, text) => { statusEl.className = mode; statusText.textContent = text; };
+
+  async function start() {
+    talk.disabled = true;
+    setStatus("", "Asking for your microphone…");
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const r = await fetch("/api/eleven-session", { method: "POST" });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error || `session failed (${r.status})`);
+      setStatus("", "Connecting…");
+      convo = await Conversation.startSession({
+        conversationToken: body.token,
+        connectionType: "webrtc",
+        onConnect: () => {
+          startedAt = Date.now();
+          timer = setInterval(() => {
+            const s = Math.floor((Date.now() - startedAt) / 1000);
+            $("clock").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+          }, 500);
+          talk.textContent = "End";
+          talk.classList.add("live");
+          talk.disabled = false;
+        },
+        onDisconnect: () => stopUi("Call ended."),
+        onError: (message) => { console.error(message); say("note", `Error: ${message}`); },
+        onMessage: ({ source, message }) => {
+          if (source === "user") userDoneAt = performance.now();
+          say(source === "user" ? "user" : "agent", message);
+        },
+        onModeChange: ({ mode }) => {
+          if (mode === "speaking") {
+            if (userDoneAt) $("lat").textContent = `${((performance.now() - userDoneAt) / 1000).toFixed(1)} s`;
+            userDoneAt = null;
+            setStatus("speaking", "Speaking… (you can interrupt)");
+          } else setStatus("listening", "Listening…");
+        },
+      });
+    } catch (err) {
+      say("note", err.message.includes("Permission") || err.name === "NotAllowedError" ? "Microphone access was blocked." : err.message);
+      stopUi("Ready.");
+    }
+  }
+
+  function stopUi(text) {
+    clearInterval(timer);
+    convo = null;
+    talk.textContent = "Start";
+    talk.classList.remove("live");
+    talk.disabled = false;
+    setStatus("", text);
+  }
+
+  talk.addEventListener("click", async () => {
+    if (convo) { talk.disabled = true; await convo.endSession(); stopUi("Call ended."); }
+    else start();
+  });
+</script>
+</body>
+</html>

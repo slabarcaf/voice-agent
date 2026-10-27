@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/*.js": { "includeFiles": "brain/**", "maxDuration": 30 }
+    "api/*.js": { "includeFiles": "{brain,eleven}/**", "maxDuration": 30 }
   },
   "rewrites": [
     { "source": "/demo", "destination": "/web/demo.html" },
