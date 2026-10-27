@@ -3,7 +3,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-const DEFAULT_ORIGINS = ["https://santiagolabarca.vercel.app", "http://localhost:4322", "http://localhost:3000"];
+const DEFAULT_ORIGINS = ["https://santiagolabarca.vercel.app", "https://voice-agent-three-sable.vercel.app", "http://localhost:4322", "http://localhost:3000"];
 
 export function allowedOrigins(env = process.env) {
   const extra = (env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);

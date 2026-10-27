@@ -4,6 +4,7 @@ Voice agent for Santiago's portfolio, built twice over one shared brain:
 - **A, managed:** ElevenLabs Agents. STT, turn-taking and TTS all happen at ElevenLabs; the LLM is "Custom LLM" → our `/api/llm`.
 - **B, open source:** browser VAD → Groq Whisper → `/api/llm` → Kokoro TTS on the Oracle VM.
 
+Production: https://voice-agent-three-sable.vercel.app (pushing to `main` deploys).
 Plan of record: `~/.claude/plans/i-want-to-create-compiled-brooks.md`.
 
 - `brain/` holds everything that is not audio: the persona, the knowledge pack, the router, the providers and the guardrails. Change behaviour here and both engines follow.
