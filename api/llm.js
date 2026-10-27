@@ -15,7 +15,7 @@ export default async function handler(req, res) {
 
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
   // Shape only, never content: lets us see what each caller (ElevenLabs, browser) sends.
-  console.log(JSON.stringify({ path: req.url, keys: Object.keys(body), roles: (body.messages || []).map((m) => m.role), tools: (body.tools || []).map((t) => t.function?.name || t.type) }));
+  console.log(JSON.stringify({ path: req.url, keys: Object.keys(body), roles: (body.messages || []).map((m) => m.role), tools: (body.tools || []).map((t) => t.function?.name || t.type), toolSchemas: (body.tools || []).map((t) => t.function?.parameters), toolMsgs: (body.messages || []).filter((m) => m.tool_calls || m.role === "tool").map((m) => ({ role: m.role, tool_calls: m.tool_calls, tool_call_id: m.tool_call_id })) }));
   const id = `chatcmpl-${Date.now().toString(36)}`;
   const created = Math.floor(Date.now() / 1000);
   const agentId = req.query?.agent || "resume";
