@@ -360,9 +360,9 @@
       });
     }
 
-    async function savedGreeting() {
+    async function savedGreeting(file) {
       try {
-        const r = await fetch("/web/greeting-orpheus.wav");
+        const r = await fetch(file);
         if (!r.ok) throw new Error("greeting " + r.status);
         const buf = await audioCtx.decodeAudioData(await r.arrayBuffer());
         return { audio: buf.getChannelData(0), rate: buf.sampleRate };
@@ -467,14 +467,14 @@
       onSpeechEnd: (audio) => { if (!echo) turn(audio); },
     });
 
-    // The greeting doesn't wait for Kokoro: it uses Kokoro only if the model is cached.
-    await Promise.race([tts.loaded, new Promise((r) => setTimeout(r, 1500))]);
     mic.start();
     startClock();
     say("agent", GREETING.en);
-    // Phones play a saved Orpheus recording of the greeting, so it doesn't spend the server
-    // voice's daily quota (3,600 characters on Groq's free tier).
-    enqueue(GREETING.en, "en", gen, kokoroUsable ? null : savedGreeting());
+    // The greeting is a saved recording in the same voice the answers will use: Kokoro takes
+    // a few seconds to start even when cached (the device voice used to fill in, so the call
+    // opened in a different, robotic voice), and phones shouldn't spend the server voice's
+    // daily quota (3,600 characters on Groq's free tier) on it.
+    enqueue(GREETING.en, "en", gen, savedGreeting(kokoroUsable ? "/web/greeting-kokoro.wav" : "/web/greeting-orpheus.wav"));
     if (!kokoroUsable) say("note", "This device can't run the in-browser voice (it needs WebGPU on a computer), so the open-source Orpheus voice speaks from the server.");
     else if (!tts.ready && !tts.failed) {
       const note = say("note", "Loading the open-source voice (about 330 MB, once). Your device's voice fills in until then.");
