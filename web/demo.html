@@ -35,6 +35,8 @@
   .engines button { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: .9rem; cursor: pointer; }
   .engines button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
   .engines button:disabled { opacity: .5; cursor: not-allowed; }
+  #about { margin: -12px 0 20px; font-size: .9rem; line-height: 1.5; color: var(--muted); }
+  .embed #about { text-align: center; margin: -8px 0 16px; }
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; text-align: center; }
   #talk { width: 120px; height: 120px; border-radius: 50%; border: none; background: var(--accent); color: var(--accent-text); font: 600 1rem system-ui, sans-serif; cursor: pointer; transition: transform .15s; }
   #talk:active { transform: scale(.97); }
@@ -73,6 +75,7 @@
     <button data-engine="managed" aria-pressed="true">A · ElevenLabs</button>
     <button data-engine="open" aria-pressed="false">B · Open source</button>
   </div>
+  <p id="about" hidden>Santiago built this version himself from open-source parts: a detector that hears when you stop talking, Whisper to transcribe you, the same brain as option A, and an open voice model (Kokoro or Orpheus). It's a little slower than ElevenLabs.</p>
 
   <div class="card">
     <button id="talk" aria-live="polite">Start</button>
@@ -134,6 +137,7 @@
     engine = next;
     document.querySelectorAll(".engines button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.engine === engine)));
     $("parts-wrap").hidden = engine !== "open";
+    $("about").hidden = engine !== "open";
     $("foot").textContent = FOOTERS[engine];
   }
   document.querySelectorAll(".engines button").forEach((b) => b.addEventListener("click", () => !call && setEngine(b.dataset.engine)));
